@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - DiegoGo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="settings-page">
+        <h1 class="page-title">Configuración</h1>
+        <p class="page-subtitle">Personaliza tu experiencia en la plataforma</p>
+        
+        <div class="settings-sections">
+            <section class="settings-section">
+                <h2 class="settings-section-title">
+                    <span class="section-icon">🔐</span>
+                    Seguridad
+                </h2>
+                
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Cambiar contraseña</strong>
+                            <p>Actualiza tu contraseña periódicamente para mayor seguridad</p>
+                        </div>
+                        <button class="btn btn-small btn-secondary">Cambiar</button>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Autenticación de dos factores</strong>
+                            <p>Añade una capa extra de seguridad a tu cuenta</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Sesiones activas</strong>
+                            <p>Gestiona los dispositivos con acceso a tu cuenta</p>
+                        </div>
+                        <button class="btn btn-small btn-secondary">Ver</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="settings-section">
+                <h2 class="settings-section-title">
+                    <span class="section-icon">🔔</span>
+                    Notificaciones
+                </h2>
+                
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Notificaciones por correo</strong>
+                            <p>Recibe actualizaciones en tu correo electrónico</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Notificaciones push</strong>
+                            <p>Recibe alertas en tiempo real en tu navegador</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="settings-section">
+                <h2 class="settings-section-title">
+                    <span class="section-icon">🎨</span>
+                    Apariencia
+                </h2>
+                
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Tema de la aplicación</strong>
+                            <p>Elige entre tema claro u oscuro</p>
+                        </div>
+                        <select class="select-input">
+                            <option>Claro</option>
+                            <option>Oscuro</option>
+                            <option>Automático</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="settings-section danger-zone">
+                <h2 class="settings-section-title">
+                    <span class="section-icon">⚠</span>
+                    Zona de peligro
+                </h2>
+                
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <strong>Eliminar cuenta</strong>
+                            <p>Elimina permanentemente tu cuenta y todos tus datos</p>
+                        </div>
+                        <button class="btn btn-small btn-danger">Eliminar</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

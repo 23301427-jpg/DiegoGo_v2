@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - DiegoGo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-page">
+        <h1 class="page-title">Mi Perfil</h1>
+        
+        <div class="profile-grid">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <span class="avatar-text">{{ session.usuario[0].upper() }}</span>
+                </div>
+                <h2 class="profile-name">{{ session.usuario }}</h2>
+                <p class="profile-role">Usuario</p>
+            </div>
+            
+            <div class="profile-info-card">
+                <h3 class="card-title">Información Personal</h3>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Nombre de usuario</span>
+                        <span class="info-value">{{ usuario.nombre if usuario else session.usuario }}</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Correo electrónico</span>
+                        <span class="info-value">{{ usuario.correo if usuario else 'No disponible' }}</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Estado de cuenta</span>
+                        <span class="info-value">
+                            <span class="status-badge status-active">Activa</span>
+                        </span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">Miembro desde</span>
+                        <span class="info-value">2026</span>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" style="margin-top: 20px;">
+                    <span>Editar perfil</span>
+                    <span class="btn-icon">✎</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="preferences-section">
+            <h2 class="section-title">Preferencias</h2>
+            <div class="preferences-grid">
+                <div class="preference-item">
+                    <div class="preference-header">
+                        <span class="preference-label">Notificaciones por correo</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <p class="preference-description">Recibe actualizaciones importantes en tu correo</p>
+                </div>
+                
+                <div class="preference-item">
+                    <div class="preference-header">
+                        <span class="preference-label">Modo oscuro</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <p class="preference-description">Cambia la apariencia de la interfaz</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

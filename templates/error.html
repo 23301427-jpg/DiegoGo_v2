@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error_title }} - Masoite{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="error-page">
+        <div class="error-content">
+            <div class="error-icon-wrapper">
+                <span class="error-code">{{ error_code }}</span>
+                <div class="error-decoration">
+                    <div class="error-circle"></div>
+                    <div class="error-circle"></div>
+                    <div class="error-circle"></div>
+                </div>
+            </div>
+            
+            <h1 class="error-title">{{ error_title }}</h1>
+            <p class="error-message">{{ error_message }}</p>
+            
+            <div class="error-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <span>← Volver al inicio</span>
+                </a>
+                
+                {% if session.usuario %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <span>Ir al dashboard</span>
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('registro') }}" class="btn btn-secondary">
+                        <span>Crear cuenta</span>
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="error-help">
+                <h3>¿Necesitas ayuda?</h3>
+                <p>Si el problema persiste, aquí hay algunas cosas que puedes intentar:</p>
+                <ul class="help-list">
+                    <li>Verifica que la URL sea correcta</li>
+                    <li>Intenta refrescar la página</li>
+                    <li>Regresa a la página anterior</li>
+                    <li>Vuelve a iniciar sesión si es necesario</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="error-illustration">
+            <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="errorGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ee5a6f;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                
+                <!-- Fondo decorativo -->
+                <circle cx="200" cy="150" r="120" fill="url(#errorGradient)" opacity="0.1"/>
+                <circle cx="200" cy="150" r="90" fill="url(#errorGradient)" opacity="0.1"/>
+                
+                <!-- Señal de advertencia -->
+                <path d="M 200 80 L 260 180 L 140 180 Z" fill="url(#errorGradient)" opacity="0.8"/>
+                <circle cx="200" cy="150" r="8" fill="#fff"/>
+                <rect x="196" y="110" width="8" height="30" fill="#fff" rx="4"/>
+                
+                <!-- Elementos decorativos -->
+                <circle cx="100" cy="100" r="5" fill="#ff6b6b" opacity="0.3">
+                    <animate attributeName="r" values="5;8;5" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="300" cy="200" r="5" fill="#ee5a6f" opacity="0.3">
+                    <animate attributeName="r" values="5;8;5" dur="2.5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="150" cy="220" r="5" fill="#ff6b6b" opacity="0.3">
+                    <animate attributeName="r" values="5;8;5" dur="3s" repeatCount="indefinite"/>
+                </circle>
+            </svg>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DiegoGo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1 class="page-title">Panel de Control</h1>
+        <p class="page-subtitle">Bienvenido, <strong>{{ session.usuario }}</strong></p>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="dashboard-card card-primary">
+            <div class="card-icon">👤</div>
+            <h3 class="card-title">Tu Perfil</h3>
+            <p class="card-description">Ver y editar tu información personal</p>
+            <a href="{{ url_for('perfil') }}" class="card-link">
+                Ver perfil <span>→</span>
+            </a>
+        </div>
+        
+        <div class="dashboard-card card-secondary">
+            <div class="card-icon">⚙</div>
+            <h3 class="card-title">Configuración</h3>
+            <p class="card-description">Ajusta las preferencias de tu cuenta</p>
+            <a href="{{ url_for('configuracion') }}" class="card-link">
+                Configurar <span>→</span>
+            </a>
+        </div>
+        
+        <div class="dashboard-card card-tertiary">
+            <div class="card-icon">📊</div>
+            <h3 class="card-title">Estadísticas</h3>
+            <p class="card-description">Visualiza tus métricas y progreso</p>
+            <a href="#" class="card-link">
+                Ver estadísticas <span>→</span>
+            </a>
+        </div>
+        
+        <div class="dashboard-card card-warning">
+            <div class="card-icon">⚠</div>
+            <h3 class="card-title">Prueba de Errores</h3>
+            <p class="card-description">Simula un error para ver el manejo</p>
+            <a href="{{ url_for('simular_error') }}" class="card-link">
+                Simular error <span>→</span>
+            </a>
+        </div>
+    </div>
+    
+    <div class="activity-section">
+        <h2 class="section-title">Actividad Reciente</h2>
+        <div class="activity-list">
+            <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-content">
+                    <strong>Inicio de sesión exitoso</strong>
+                    <span class="activity-time">Hace unos momentos</span>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-content">
+                    <strong>Cuenta creada</strong>
+                    <span class="activity-time">Hoy</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         GALERÍA / CARRUSEL
+         ========================================== -->
+    <div class="dash-section">
+        <div class="dash-section-header">
+            <h2 class="section-title">Galería de Fotos</h2>
+            <label for="dash-upload" class="btn btn-primary btn-small carousel-upload-btn">
+                <span>+ Subir foto</span>
+            </label>
+            <input type="file" id="dash-upload" accept="image/*" multiple style="display:none;">
+        </div>
+
+        <div class="carousel-wrapper" id="dashCarouselWrapper">
+            <div class="carousel-empty" id="dashEmpty">
+                <span class="carousel-empty-icon">◻</span>
+                <p>Sube fotos para verlas aquí</p>
+            </div>
+            <div class="carousel-track-container" id="dashTrackContainer" style="display:none;">
+                <button class="carousel-btn carousel-prev" id="dashPrev">‹</button>
+                <div class="carousel-track" id="dashTrack"></div>
+                <button class="carousel-btn carousel-next" id="dashNext">›</button>
+            </div>
+            <div class="carousel-dots" id="dashDots"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         CRUD DE USUARIOS
+         ========================================== -->
+    <div class="dash-section">
+        <div class="dash-section-header">
+            <h2 class="section-title">Gestión de Usuarios</h2>
+            <button class="btn btn-primary btn-small" id="btnNuevoUsuario">+ Nuevo usuario</button>
+        </div>
+
+        <!-- Tabla de usuarios -->
+        <div class="crud-table-wrapper">
+            {% if usuarios %}
+            <table class="crud-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr id="row-{{ loop.index0 }}">
+                        <td class="td-index">{{ loop.index }}</td>
+                        <td>{{ u.nombre }}</td>
+                        <td>{{ u.correo }}</td>
+                        <td class="td-actions">
+                            <button class="btn-crud btn-edit" onclick="abrirEditar({{ loop.index0 }}, '{{ u.nombre }}', '{{ u.correo }}')">Editar</button>
+                            <form method="POST" action="{{ url_for('eliminar_usuario', idx=loop.index0) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
+                                <button type="submit" class="btn-crud btn-del">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="crud-empty">
+                <p>No hay usuarios registrados aún.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL: NUEVO / EDITAR USUARIO
+     ========================================== -->
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Nuevo Usuario</h3>
+            <button class="modal-close" id="modalClose">✕</button>
+        </div>
+        <form method="POST" id="modalForm" class="modal-form">
+            <input type="hidden" id="modalIdx" name="idx" value="">
+
+            <div class="form-group">
+                <label class="form-label">Nombre <span class="required">*</span></label>
+                <input type="text" name="nombre" id="modalNombre" class="form-input" required placeholder="nombre">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Correo <span class="required">*</span></label>
+                <input type="email" name="correo" id="modalCorreo" class="form-input" required placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group" id="modalPassGroup">
+                <label class="form-label">Contraseña <span class="required">*</span></label>
+                <input type="password" name="password" id="modalPass" class="form-input" placeholder="••••••••">
+                <small class="form-hint" id="modalPassHint"></small>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-small" id="modalCancelBtn">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-small" id="modalSubmitBtn">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+/* ---- CARRUSEL DASHBOARD ---- */
+(function() {
+    const upload    = document.getElementById('dash-upload');
+    const empty     = document.getElementById('dashEmpty');
+    const container = document.getElementById('dashTrackContainer');
+    const track     = document.getElementById('dashTrack');
+    const dots      = document.getElementById('dashDots');
+    const prevBtn   = document.getElementById('dashPrev');
+    const nextBtn   = document.getElementById('dashNext');
+    let images = [], current = 0;
+
+    upload.addEventListener('change', function(e) {
+        Array.from(e.target.files).forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = ev => { images.push(ev.target.result); render(); };
+            reader.readAsDataURL(file);
+        });
+        upload.value = '';
+    });
+
+    function render() {
+        if (!images.length) {
+            empty.style.display = 'flex';
+            container.style.display = 'none';
+            dots.innerHTML = '';
+            return;
+        }
+        empty.style.display = 'none';
+        container.style.display = 'flex';
+
+        track.innerHTML = '';
+        images.forEach((src, i) => {
+            const slide = document.createElement('div');
+            slide.className = 'carousel-slide' + (i === current ? ' active' : '');
+            const img = document.createElement('img');
+            img.src = src; img.alt = 'Foto ' + (i+1);
+            const del = document.createElement('button');
+            del.className = 'carousel-delete'; del.textContent = '✕';
+            del.addEventListener('click', () => { images.splice(i,1); if(current>=images.length) current=Math.max(0,images.length-1); render(); });
+            slide.appendChild(img); slide.appendChild(del);
+            track.appendChild(slide);
+        });
+
+        dots.innerHTML = '';
+        images.forEach((_, i) => {
+            const d = document.createElement('button');
+            d.className = 'carousel-dot' + (i===current?' active':'');
+            d.addEventListener('click', () => goTo(i));
+            dots.appendChild(d);
+        });
+        show(current);
+    }
+
+    function show(idx) {
+        current = (idx + images.length) % images.length;
+        document.querySelectorAll('#dashTrack .carousel-slide').forEach((s,i) => s.classList.toggle('active', i===current));
+        document.querySelectorAll('#dashDots .carousel-dot').forEach((d,i) => d.classList.toggle('active', i===current));
+    }
+    function goTo(idx) { show(idx); }
+    prevBtn.addEventListener('click', () => goTo(current-1));
+    nextBtn.addEventListener('click', () => goTo(current+1));
+})();
+
+/* ---- CRUD MODAL ---- */
+const overlay     = document.getElementById('modalOverlay');
+const modalTitle  = document.getElementById('modalTitle');
+const modalForm   = document.getElementById('modalForm');
+const modalIdx    = document.getElementById('modalIdx');
+const modalNombre = document.getElementById('modalNombre');
+const modalCorreo = document.getElementById('modalCorreo');
+const modalPass   = document.getElementById('modalPass');
+const modalPassHint = document.getElementById('modalPassHint');
+
+function cerrarModal() { overlay.style.display = 'none'; }
+
+document.getElementById('btnNuevoUsuario').addEventListener('click', function() {
+    modalTitle.textContent = 'Nuevo Usuario';
+    modalForm.action = '{{ url_for("crear_usuario") }}';
+    modalIdx.value = '';
+    modalNombre.value = '';
+    modalCorreo.value = '';
+    modalPass.value = '';
+    modalPass.required = true;
+    modalPassHint.textContent = 'Mínimo 8 caracteres, mayúsculas, minúsculas y números';
+    overlay.style.display = 'flex';
+});
+
+function abrirEditar(idx, nombre, correo) {
+    modalTitle.textContent = 'Editar Usuario';
+    modalForm.action = '{{ url_for("editar_usuario") }}';
+    modalIdx.value = idx;
+    modalNombre.value = nombre;
+    modalCorreo.value = correo;
+    modalPass.value = '';
+    modalPass.required = false;
+    modalPassHint.textContent = 'Deja en blanco para no cambiar la contraseña';
+    overlay.style.display = 'flex';
+}
+
+document.getElementById('modalClose').addEventListener('click', cerrarModal);
+document.getElementById('modalCancelBtn').addEventListener('click', cerrarModal);
+overlay.addEventListener('click', function(e) { if(e.target === overlay) cerrarModal(); });
+</script>
+{% endblock %}
+{% endblock %}

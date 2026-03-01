@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Registro - WebApp{% endblock %}
+
+{% block extra_css %}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-page">
+        <div class="form-header">
+            <h1 class="form-title">Crear Cuenta</h1>
+            <p class="form-subtitle">Únete a nuestra plataforma y comienza tu experiencia</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('registro') }}" class="form-card" id="registroForm" novalidate>
+            <!-- Campo Nombre -->
+            <div class="form-group">
+                <label for="nombre" class="form-label">
+                    Nombre de usuario
+                    <span class="required">*</span>
+                </label>
+                <input 
+                    type="text" 
+                    id="nombre" 
+                    name="nombre" 
+                    class="form-input"
+                    placeholder="tuusuario"
+                    required
+                    autocomplete="username">
+                <div class="validation-feedback" id="nombreFeedback"></div>
+                <small class="form-hint">Solo letras, sin espacios ni números</small>
+            </div>
+            
+            <!-- Campo Correo -->
+<div class="form-group">
+    <label for="correo" class="form-label">
+        Correo electrónico
+        <span class="required">*</span>
+    </label>
+    <input 
+        type="email" 
+        id="correo" 
+        name="correo" 
+        class="form-input"
+        placeholder="tu@ejemplo.com"
+        required
+        autocomplete="email">
+    <div class="validation-feedback" id="correoFeedback"></div>
+    <small class="form-hint">Debe contener @ y terminar en dominio válido (ej: .com, .pe, .mx - mínimo 2 letras después del punto)</small>
+</div>
+            
+            <!-- Campo Contraseña -->
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    Contraseña
+                    <span class="required">*</span>
+                </label>
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="new-password">
+                    <button type="button" class="password-toggle" id="togglePassword">
+                        <span class="eye-icon">👁</span>
+                    </button>
+                </div>
+                <div class="validation-feedback" id="passwordFeedback"></div>
+                <small class="form-hint">Mínimo 8 caracteres, incluye mayúsculas, minúsculas y números</small>
+            </div>
+            
+            <!-- Campo Confirmar Contraseña -->
+            <div class="form-group">
+                <label for="confirmPassword" class="form-label">
+                    Confirmar contraseña
+                    <span class="required">*</span>
+                </label>
+                <input 
+                    type="password" 
+                    id="confirmPassword" 
+                    name="confirmPassword" 
+                    class="form-input"
+                    placeholder="••••••••"
+                    required
+                    autocomplete="new-password">
+                <div class="validation-feedback" id="confirmPasswordFeedback"></div>
+            </div>
+            
+            <!-- Indicador de fortaleza de contraseña -->
+            <div class="password-strength" id="passwordStrength">
+                <div class="strength-bars">
+                    <div class="strength-bar"></div>
+                    <div class="strength-bar"></div>
+                    <div class="strength-bar"></div>
+                    <div class="strength-bar"></div>
+                </div>
+                <span class="strength-text">Fortaleza de contraseña</span>
+            </div>
+            
+            <!-- Términos y condiciones -->
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="terminos" required>
+                    <span class="checkbox-custom"></span>
+                    <span>Acepto los <a href="#" class="link">términos y condiciones</a></span>
+                </label>
+                <div class="validation-feedback" id="terminosFeedback"></div>
+            </div>
+            
+            <!-- ==========================================
+                 GOOGLE reCAPTCHA v2
+                 ========================================== -->
+            <div class="recaptcha-container">
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha" 
+                         data-sitekey="{{ recaptcha_site_key }}"
+                         data-callback="onRecaptchaSuccess"
+                         data-expired-callback="onRecaptchaExpired">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botón de envío -->
+            <button type="submit" class="btn btn-submit" id="submitBtn" disabled>
+                <span class="btn-text">Crear cuenta</span>
+                <span class="btn-icon">→</span>
+            </button>
+            
+            <!-- Link a login -->
+            <div class="form-footer">
+                <p>¿Ya tienes una cuenta? <a href="{{ url_for('login') }}" class="link">Inicia sesión aquí</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Script de Google reCAPTCHA -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+<!-- Script de validaciones con soporte para reCAPTCHA -->
+<script>
+// Variable global para tracking del estado de reCAPTCHA
+let recaptchaCompleted = false;
+
+// Callback cuando reCAPTCHA se completa exitosamente
+function onRecaptchaSuccess(response) {
+    recaptchaCompleted = true;
+    console.log('reCAPTCHA completado exitosamente');
+    actualizarBotonSubmit();
+}
+
+// Callback cuando reCAPTCHA expira
+function onRecaptchaExpired() {
+    recaptchaCompleted = false;
+    console.log('reCAPTCHA expirado');
+    actualizarBotonSubmit();
+}
+
+// Actualizar el estado del botón de submit
+function actualizarBotonSubmit() {
+    // Obtener el estado de todas las validaciones
+    const validacionesCompletas = window.validacionesEstado && 
+                                   Object.values(window.validacionesEstado).every(v => v === true);
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const todasValidas = validacionesCompletas && recaptchaCompleted;
+    
+    submitBtn.disabled = !todasValidas;
+    
+    if (todasValidas) {
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+    } else {
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+    }
+}
+
+// Escuchar cambios en el estado de validación
+document.addEventListener('validacionActualizada', function() {
+    actualizarBotonSubmit();
+});
+</script>
+
+<!-- Script original de validaciones -->
+<script src="{{ url_for('static', filename='js/validaciones.js') }}"></script>
+{% endblock %}
