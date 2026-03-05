@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Galería - DiegoGo{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1 class="page-title">Galería de Fotos</h1>
+        <p class="page-subtitle">Sube y visualiza tus imágenes</p>
+    </div>
+
+    <div class="dash-section">
+        <div class="dash-section-header">
+            <label for="dash-upload" class="btn btn-primary carousel-upload-btn">
+                <span>+ Subir foto</span>
+            </label>
+            <input type="file" id="dash-upload" accept="image/*" multiple style="display:none;">
+        </div>
+
+        <div class="carousel-wrapper" id="dashCarouselWrapper">
+            <div class="carousel-empty" id="dashEmpty">
+                <span class="carousel-empty-icon">🖼️</span>
+                <p>Sube fotos para verlas aquí</p>
+            </div>
+            <div class="carousel-track-container" id="dashTrackContainer" style="display:none;">
+                <button class="carousel-btn carousel-prev" id="dashPrev">‹</button>
+                <div class="carousel-track" id="dashTrack"></div>
+                <button class="carousel-btn carousel-next" id="dashNext">›</button>
+            </div>
+            <div class="carousel-dots" id="dashDots"></div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+(function() {
+    const upload    = document.getElementById('dash-upload');
+    const empty     = document.getElementById('dashEmpty');
+    const container = document.getElementById('dashTrackContainer');
+    const track     = document.getElementById('dashTrack');
+    const dots      = document.getElementById('dashDots');
+    const prevBtn   = document.getElementById('dashPrev');
+    const nextBtn   = document.getElementById('dashNext');
+    let images = [], current = 0;
+
+    upload.addEventListener('change', function(e) {
+        Array.from(e.target.files).forEach(file => {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = ev => { images.push(ev.target.result); render(); };
+            reader.readAsDataURL(file);
+        });
+        upload.value = '';
+    });
+
+    function render() {
+        if (!images.length) {
+            empty.style.display = 'flex';
+            container.style.display = 'none';
+            dots.innerHTML = '';
+            return;
+        }
+        empty.style.display = 'none';
+        container.style.display = 'flex';
+
+        track.innerHTML = '';
+        images.forEach((src, i) => {
+            const slide = document.createElement('div');
+            slide.className = 'carousel-slide' + (i === current ? ' active' : '');
+            const img = document.createElement('img');
+            img.src = src; img.alt = 'Foto ' + (i + 1);
+            const del = document.createElement('button');
+            del.className = 'carousel-delete'; del.textContent = '✕';
+            del.addEventListener('click', () => {
+                images.splice(i, 1);
+                if (current >= images.length) current = Math.max(0, images.length - 1);
+                render();
+            });
+            slide.appendChild(img); slide.appendChild(del);
+            track.appendChild(slide);
+        });
+
+        dots.innerHTML = '';
+        images.forEach((_, i) => {
+            const d = document.createElement('button');
+            d.className = 'carousel-dot' + (i === current ? ' active' : '');
+            d.addEventListener('click', () => goTo(i));
+            dots.appendChild(d);
+        });
+        show(current);
+    }
+
+    function show(idx) {
+        current = (idx + images.length) % images.length;
+        document.querySelectorAll('#dashTrack .carousel-slide').forEach((s, i) => s.classList.toggle('active', i === current));
+        document.querySelectorAll('#dashDots .carousel-dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    }
+    function goTo(idx) { show(idx); }
+    prevBtn.addEventListener('click', () => goTo(current - 1));
+    nextBtn.addEventListener('click', () => goTo(current + 1));
+    document.addEventListener('keydown', function(e) {
+        if (!images.length) return;
+        if (e.key === 'ArrowLeft') goTo(current - 1);
+        if (e.key === 'ArrowRight') goTo(current + 1);
+    });
+})();
+</script>
+{% endblock %}
+{% endblock %}

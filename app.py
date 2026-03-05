@@ -182,7 +182,7 @@ def login():
         if usuario:
             session['usuario'] = usuario['nombre']
             flash(f'¡Bienvenido, {usuario["nombre"]}!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('usuarios'))
         else:
             flash('Correo o contraseña incorrectos', 'error')
     
@@ -200,6 +200,28 @@ def dashboard():
     ]
     return render_template('dashboard.html', breadcrumbs=breadcrumbs, usuarios=usuarios_db)
 
+# Galería
+@app.route('/galeria')
+@login_required
+def galeria():
+    breadcrumbs = [
+        {'nombre': 'Inicio', 'url': url_for('index')},
+        {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
+        {'nombre': 'Galería', 'url': url_for('galeria')}
+    ]
+    return render_template('galeria.html', breadcrumbs=breadcrumbs)
+
+# Gestión de usuarios
+@app.route('/usuarios')
+@login_required
+def usuarios():
+    breadcrumbs = [
+        {'nombre': 'Inicio', 'url': url_for('index')},
+        {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
+        {'nombre': 'Gestión de Usuarios', 'url': url_for('usuarios')}
+    ]
+    return render_template('usuarios.html', breadcrumbs=breadcrumbs, usuarios=usuarios_db)
+
 # CRUD - Crear usuario
 @app.route('/usuarios/crear', methods=['POST'])
 @login_required
@@ -210,23 +232,23 @@ def crear_usuario():
 
     if not nombre or not correo or not password:
         flash('Todos los campos son obligatorios', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$', nombre):
         flash('El nombre solo debe contener letras', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     if not re.match(r'^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$', correo):
         flash('Correo inválido', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     if any(u['correo'] == correo for u in usuarios_db):
         flash('Ese correo ya está registrado', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     usuarios_db.append({'nombre': nombre, 'correo': correo, 'password': password})
     flash(f'Usuario {nombre} creado correctamente', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('usuarios'))
 
 # CRUD - Editar usuario
 @app.route('/usuarios/editar', methods=['POST'])
@@ -239,20 +261,20 @@ def editar_usuario():
         password = request.form.get('password', '').strip()
     except (TypeError, ValueError):
         flash('Solicitud inválida', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     if idx < 0 or idx >= len(usuarios_db):
         flash('Usuario no encontrado', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     if not nombre or not correo:
         flash('Nombre y correo son obligatorios', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     # Verificar correo duplicado (ignorar el propio)
     if any(u['correo'] == correo for i, u in enumerate(usuarios_db) if i != idx):
         flash('Ese correo ya está en uso por otro usuario', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     usuarios_db[idx]['nombre'] = nombre
     usuarios_db[idx]['correo'] = correo
@@ -264,7 +286,7 @@ def editar_usuario():
         pass  # no forzamos logout, solo actualizamos datos
 
     flash(f'Usuario actualizado correctamente', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('usuarios'))
 
 # CRUD - Eliminar usuario
 @app.route('/usuarios/eliminar/<int:idx>', methods=['POST'])
@@ -272,12 +294,12 @@ def editar_usuario():
 def eliminar_usuario(idx):
     if idx < 0 or idx >= len(usuarios_db):
         flash('Usuario no encontrado', 'error')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('usuarios'))
 
     nombre = usuarios_db[idx]['nombre']
     usuarios_db.pop(idx)
     flash(f'Usuario {nombre} eliminado', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('usuarios'))
 
 # Perfil de usuario
 @app.route('/perfil')

@@ -6,7 +6,7 @@
     <title>{% block title %}Mi Sitio Web{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
@@ -19,7 +19,7 @@
         <nav class="navbar">
             <div class="container">
                 <a href="{{ url_for('index') }}" class="logo">
-                    <span class="logo-icon">◬</span>
+                    <span class="logo-icon">D</span>
                     <span class="logo-text">DiegoGo</span>
                 </a>
                 
@@ -27,8 +27,6 @@
                     <li><a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">Inicio</a></li>
                     {% if session.usuario %}
                         <li><a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a></li>
-                        <li><a href="{{ url_for('perfil') }}" class="nav-link {% if request.endpoint == 'perfil' %}active{% endif %}">Perfil</a></li>
-                        <li><a href="{{ url_for('configuracion') }}" class="nav-link {% if request.endpoint == 'configuracion' %}active{% endif %}">Configuración</a></li>
                         <li><a href="{{ url_for('logout') }}" class="nav-link logout">Salir</a></li>
                     {% else %}
                         <li><a href="{{ url_for('registro') }}" class="nav-link {% if request.endpoint == 'registro' %}active{% endif %}">Registro</a></li>
