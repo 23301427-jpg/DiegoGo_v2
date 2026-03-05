@@ -33,8 +33,8 @@
                         <td>{{ u.nombre }}</td>
                         <td>{{ u.correo }}</td>
                         <td class="td-actions">
-                            <button class="btn-crud btn-edit" onclick="abrirEditar({{ loop.index0 }}, '{{ u.nombre }}', '{{ u.correo }}')">Editar</button>
-                            <form method="POST" action="{{ url_for('eliminar_usuario', idx=loop.index0) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
+                            <button class="btn-crud btn-edit" onclick="abrirEditar({{ u.id }}, '{{ u.nombre }}', '{{ u.correo }}')">Editar</button>
+                            <form method="POST" action="{{ url_for('eliminar_usuario', uid=u.id) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
                                 <button type="submit" class="btn-crud btn-del">Eliminar</button>
                             </form>
                         </td>

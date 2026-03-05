@@ -11,23 +11,44 @@
 
     <div class="dash-section">
         <div class="dash-section-header">
-            <label for="dash-upload" class="btn btn-primary carousel-upload-btn">
-                <span>+ Subir foto</span>
-            </label>
-            <input type="file" id="dash-upload" accept="image/*" multiple style="display:none;">
+            <form method="POST" action="{{ url_for('subir_imagen') }}" enctype="multipart/form-data" id="uploadForm">
+                <label for="fotos-input" class="btn btn-primary carousel-upload-btn">
+                    <span>+ Subir foto</span>
+                </label>
+                <input type="file" id="fotos-input" name="fotos" accept="image/*" multiple
+                       style="display:none;" onchange="this.form.submit()">
+            </form>
         </div>
 
-        <div class="carousel-wrapper" id="dashCarouselWrapper">
-            <div class="carousel-empty" id="dashEmpty">
-                <span class="carousel-empty-icon">🖼️</span>
-                <p>Sube fotos para verlas aquí</p>
-            </div>
-            <div class="carousel-track-container" id="dashTrackContainer" style="display:none;">
-                <button class="carousel-btn carousel-prev" id="dashPrev">‹</button>
-                <div class="carousel-track" id="dashTrack"></div>
-                <button class="carousel-btn carousel-next" id="dashNext">›</button>
-            </div>
-            <div class="carousel-dots" id="dashDots"></div>
+        <div class="carousel-wrapper">
+            {% if imagenes %}
+                <div class="carousel-track-container" id="carouselTrackContainer">
+                    <button class="carousel-btn carousel-prev" id="carouselPrev">‹</button>
+                    <div class="carousel-track" id="carouselTrack">
+                        {% for img in imagenes %}
+                        <div class="carousel-slide {% if loop.first %}active{% endif %}">
+                            <img src="{{ url_for('static', filename=img.filepath) }}" alt="{{ img.filename }}">
+                            <form method="POST" action="{{ url_for('eliminar_imagen', img_id=img.id) }}"
+                                  onsubmit="return confirm('¿Eliminar esta foto?')"
+                                  style="position:absolute; top:14px; right:14px;">
+                                <button type="submit" class="carousel-delete">✕</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button class="carousel-btn carousel-next" id="carouselNext">›</button>
+                </div>
+                <div class="carousel-dots" id="carouselDots">
+                    {% for img in imagenes %}
+                    <button class="carousel-dot {% if loop.first %}active{% endif %}"></button>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="carousel-empty">
+                    <span class="carousel-empty-icon">🖼️</span>
+                    <p>Sube fotos para verlas aquí</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -35,74 +56,29 @@
 {% block extra_js %}
 <script>
 (function() {
-    const upload    = document.getElementById('dash-upload');
-    const empty     = document.getElementById('dashEmpty');
-    const container = document.getElementById('dashTrackContainer');
-    const track     = document.getElementById('dashTrack');
-    const dots      = document.getElementById('dashDots');
-    const prevBtn   = document.getElementById('dashPrev');
-    const nextBtn   = document.getElementById('dashNext');
-    let images = [], current = 0;
+    const slides = document.querySelectorAll('.carousel-slide');
+    const dots   = document.querySelectorAll('.carousel-dot');
+    const prev   = document.getElementById('carouselPrev');
+    const next   = document.getElementById('carouselNext');
+    if (!slides.length) return;
 
-    upload.addEventListener('change', function(e) {
-        Array.from(e.target.files).forEach(file => {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = ev => { images.push(ev.target.result); render(); };
-            reader.readAsDataURL(file);
-        });
-        upload.value = '';
-    });
-
-    function render() {
-        if (!images.length) {
-            empty.style.display = 'flex';
-            container.style.display = 'none';
-            dots.innerHTML = '';
-            return;
-        }
-        empty.style.display = 'none';
-        container.style.display = 'flex';
-
-        track.innerHTML = '';
-        images.forEach((src, i) => {
-            const slide = document.createElement('div');
-            slide.className = 'carousel-slide' + (i === current ? ' active' : '');
-            const img = document.createElement('img');
-            img.src = src; img.alt = 'Foto ' + (i + 1);
-            const del = document.createElement('button');
-            del.className = 'carousel-delete'; del.textContent = '✕';
-            del.addEventListener('click', () => {
-                images.splice(i, 1);
-                if (current >= images.length) current = Math.max(0, images.length - 1);
-                render();
-            });
-            slide.appendChild(img); slide.appendChild(del);
-            track.appendChild(slide);
-        });
-
-        dots.innerHTML = '';
-        images.forEach((_, i) => {
-            const d = document.createElement('button');
-            d.className = 'carousel-dot' + (i === current ? ' active' : '');
-            d.addEventListener('click', () => goTo(i));
-            dots.appendChild(d);
-        });
-        show(current);
-    }
+    let current = 0;
 
     function show(idx) {
-        current = (idx + images.length) % images.length;
-        document.querySelectorAll('#dashTrack .carousel-slide').forEach((s, i) => s.classList.toggle('active', i === current));
-        document.querySelectorAll('#dashDots .carousel-dot').forEach((d, i) => d.classList.toggle('active', i === current));
+        slides[current].classList.remove('active');
+        dots[current] && dots[current].classList.remove('active');
+        current = (idx + slides.length) % slides.length;
+        slides[current].classList.add('active');
+        dots[current] && dots[current].classList.add('active');
     }
-    function goTo(idx) { show(idx); }
-    prevBtn.addEventListener('click', () => goTo(current - 1));
-    nextBtn.addEventListener('click', () => goTo(current + 1));
+
+    prev && prev.addEventListener('click', () => show(current - 1));
+    next && next.addEventListener('click', () => show(current + 1));
+    dots.forEach((d, i) => d.addEventListener('click', () => show(i)));
+
     document.addEventListener('keydown', function(e) {
-        if (!images.length) return;
-        if (e.key === 'ArrowLeft') goTo(current - 1);
-        if (e.key === 'ArrowRight') goTo(current + 1);
+        if (e.key === 'ArrowLeft')  show(current - 1);
+        if (e.key === 'ArrowRight') show(current + 1);
     });
 })();
 </script>

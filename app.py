@@ -2,27 +2,72 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from functools import wraps
 import requests
 import re
+import os
+from werkzeug.utils import secure_filename
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = 'tu_clave_secreta_super_segura_aqui'
 
 # ==========================================
-# CONFIGURACIÓN DE reCAPTCHA
+# CONFIGURACIÓN GENERAL
 # ==========================================
-# IMPORTANTE: Reemplaza estos valores con tus claves reales de Google reCAPTCHA
-# Obtén tus claves en: https://www.google.com/recaptcha/admin
-#RECAPTCHA_SITE_KEY = '6Lc0ZVgsAAAAAGBfI0YE3l3gbEgvHn20jyNM5wtn'  # Clave del sitio (pública)
-#RECAPTCHA_SECRET_KEY = '6Lc0ZVgsAAAAAJU89QCO2u_EGHslGx4mqFfyLA3J'  # Clave secreta (privada)
-
-import os
 app.secret_key = os.environ.get('SECRET_KEY', 'clave-secreta-temporal')
-RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '6Lc0ZVgsAAAAAGBfI0YE3l3gbEgvHn20jyNM5wtn')
+
+# ==========================================
+# BASE DE DATOS — Clever Cloud MySQL
+# ==========================================
+DB_HOST     = os.environ.get('MYSQL_ADDON_HOST',     'bwatsam5jk0v2lwhgolv-mysql.services.clever-cloud.com')
+DB_NAME     = os.environ.get('MYSQL_ADDON_DB',       'bwatsam5jk0v2lwhgolv')
+DB_USER     = os.environ.get('MYSQL_ADDON_USER',     'u5ixv9uhprvcj3zr')
+DB_PASSWORD = os.environ.get('MYSQL_ADDON_PASSWORD', 'iInHvdLkMqhh7wNZt7Y7')
+DB_PORT     = os.environ.get('MYSQL_ADDON_PORT',     '3306')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB máximo por subida
+
+db = SQLAlchemy(app)
+
+# ==========================================
+# MODELOS
+# ==========================================
+class Usuario(db.Model):
+    __tablename__ = 'usuarios'
+    id       = db.Column(db.Integer, primary_key=True)
+    nombre   = db.Column(db.String(100), nullable=False)
+    correo   = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+class Imagen(db.Model):
+    __tablename__ = 'imagenes'
+    id       = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(500), nullable=False)
+
+with app.app_context():
+    db.create_all()
+
+# ==========================================
+# CONFIGURACIÓN SUBIDA DE IMÁGENES
+# ==========================================
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ==========================================
+# RECAPTCHA
+# ==========================================
+RECAPTCHA_SITE_KEY   = os.environ.get('RECAPTCHA_SITE_KEY',   '6Lc0ZVgsAAAAAGBfI0YE3l3gbEgvHn20jyNM5wtn')
 RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '6Lc0ZVgsAAAAAJU89QCO2u_EGHslGx4mqFfyLA3J')
 
-# Base de datos simulada de usuarios
-usuarios_db = []
-
-# Decorador para verificar si el usuario está autenticado
+# ==========================================
+# DECORADOR LOGIN
+# ==========================================
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -33,196 +78,178 @@ def login_required(f):
     return decorated_function
 
 # ==========================================
-# FUNCIÓN PARA VERIFICAR reCAPTCHA
+# VERIFICAR RECAPTCHA
 # ==========================================
 def verify_recaptcha(recaptcha_response):
-    """
-    Verifica el token de reCAPTCHA con los servidores de Google
-    
-    Args:
-        recaptcha_response: Token recibido del cliente
-        
-    Returns:
-        bool: True si la verificación fue exitosa, False en caso contrario
-    """
     if not recaptcha_response:
         return False
-    
-    # URL de verificación de Google reCAPTCHA
-    verify_url = 'https://www.google.com/recaptcha/api/siteverify'
-    
-    # Datos a enviar
-    data = {
-        'secret': RECAPTCHA_SECRET_KEY,
-        'response': recaptcha_response,
-        'remoteip': request.remote_addr  # IP del cliente (opcional)
-    }
-    
     try:
-        # Hacer la petición POST a Google
-        response = requests.post(verify_url, data=data)
+        response = requests.post('https://www.google.com/recaptcha/api/siteverify', data={
+            'secret': RECAPTCHA_SECRET_KEY,
+            'response': recaptcha_response,
+            'remoteip': request.remote_addr
+        })
         result = response.json()
-        
-        # Verificar la respuesta
-        if result.get('success'):
-            return True
-        else:
-            # Opcional: registrar los errores para debugging
-            print(f"reCAPTCHA falló: {result.get('error-codes', [])}")
-            return False
+        return result.get('success', False)
     except Exception as e:
-        print(f"Error al verificar reCAPTCHA: {str(e)}")
+        print(f"Error reCAPTCHA: {e}")
         return False
 
-# Ruta principal - Home
+# ==========================================
+# RUTAS PRINCIPALES
+# ==========================================
+
 @app.route('/')
 def index():
-    breadcrumbs = [{'nombre': 'Inicio', 'url': url_for('index')}]
-    return render_template('index.html', 
-                         breadcrumbs=breadcrumbs,
-                         recaptcha_site_key=RECAPTCHA_SITE_KEY)
+    return render_template('index.html',
+        breadcrumbs=[{'nombre': 'Inicio', 'url': url_for('index')}],
+        recaptcha_site_key=RECAPTCHA_SITE_KEY)
 
-# Ruta de registro
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     breadcrumbs = [
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Registro', 'url': url_for('registro')}
     ]
-    
     if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        correo = request.form.get('correo')
-        password = request.form.get('password')
+        nombre   = request.form.get('nombre', '').strip()
+        correo   = request.form.get('correo', '').strip()
+        password = request.form.get('password', '').strip()
         recaptcha_response = request.form.get('g-recaptcha-response')
-        
-        # ==========================================
-        # VERIFICACIÓN DE reCAPTCHA
-        # ==========================================
+
         if not verify_recaptcha(recaptcha_response):
             flash('Por favor, completa la verificación de reCAPTCHA', 'error')
-            return render_template('registro.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Validaciones del lado del servidor
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
         if not nombre or not correo or not password:
             flash('Todos los campos son obligatorios', 'error')
-            return render_template('registro.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Validar formato de nombre (solo letras)
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$', nombre):
-            flash('El nombre solo debe contener letras (sin espacios ni números)', 'error')
-            return render_template('registro.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Validar formato de correo - acepta @ y después del último punto mínimo 2 caracteres
+            flash('El nombre solo debe contener letras', 'error')
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
         if not re.match(r'^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$', correo):
-            flash('El correo debe tener un formato válido (debe contener @ y terminar en dominio válido como .com, .pe, .mx - mínimo 2 letras después del punto)', 'error')
-            return render_template('registro.html', 
-                         breadcrumbs=breadcrumbs,
-                         recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Validar contraseña
+            flash('El correo debe tener un formato válido', 'error')
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
         if len(password) < 8 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) or not re.search(r'\d', password):
-            flash('La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números', 'error')
-            return render_template('registro.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Verificar si el correo ya existe
-        if any(u['correo'] == correo for u in usuarios_db):
+            flash('La contraseña debe tener al menos 8 caracteres, mayúsculas, minúsculas y números', 'error')
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
+        if Usuario.query.filter_by(correo=correo).first():
             flash('Este correo ya está registrado', 'error')
-            return render_template('registro.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Agregar usuario a la base de datos simulada
-        usuarios_db.append({
-            'nombre': nombre,
-            'correo': correo,
-            'password': password
-        })
-        
+            return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
+
+        db.session.add(Usuario(nombre=nombre, correo=correo, password=password))
+        db.session.commit()
         flash('¡Registro exitoso! Ahora puedes iniciar sesión', 'success')
         return redirect(url_for('login'))
-    
-    return render_template('registro.html', 
-                         breadcrumbs=breadcrumbs,
-                         recaptcha_site_key=RECAPTCHA_SITE_KEY)
 
-# Ruta de login
+    return render_template('registro.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     breadcrumbs = [
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Iniciar Sesión', 'url': url_for('login')}
     ]
-    
     if request.method == 'POST':
-        correo = request.form.get('correo')
-        password = request.form.get('password')
+        correo   = request.form.get('correo', '').strip()
+        password = request.form.get('password', '').strip()
         recaptcha_response = request.form.get('g-recaptcha-response')
-        
-        # ==========================================
-        # VERIFICACIÓN DE reCAPTCHA
-        # ==========================================
+
         if not verify_recaptcha(recaptcha_response):
             flash('Por favor, completa la verificación de reCAPTCHA', 'error')
-            return render_template('login.html', 
-                                 breadcrumbs=breadcrumbs,
-                                 recaptcha_site_key=RECAPTCHA_SITE_KEY)
-        
-        # Buscar usuario
-        usuario = next((u for u in usuarios_db if u['correo'] == correo and u['password'] == password), None)
-        
-        if usuario:
-            session['usuario'] = usuario['nombre']
-            flash(f'¡Bienvenido, {usuario["nombre"]}!', 'success')
-            return redirect(url_for('usuarios'))
+            return render_template('login.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
+
+        u = Usuario.query.filter_by(correo=correo, password=password).first()
+        if u:
+            session['usuario']    = u.nombre
+            session['usuario_id'] = u.id
+            flash(f'¡Bienvenido, {u.nombre}!', 'success')
+            return redirect(url_for('dashboard'))
         else:
             flash('Correo o contraseña incorrectos', 'error')
-    
-    return render_template('login.html', 
-                         breadcrumbs=breadcrumbs,
-                         recaptcha_site_key=RECAPTCHA_SITE_KEY)
 
-# Dashboard (requiere autenticación)
+    return render_template('login.html', breadcrumbs=breadcrumbs, recaptcha_site_key=RECAPTCHA_SITE_KEY)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Has cerrado sesión correctamente', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    breadcrumbs = [
+    return render_template('dashboard.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')}
-    ]
-    return render_template('dashboard.html', breadcrumbs=breadcrumbs, usuarios=usuarios_db)
+    ])
 
-# Galería
+# ==========================================
+# GALERÍA — imágenes guardadas en DB + disco
+# ==========================================
+
 @app.route('/galeria')
 @login_required
 def galeria():
-    breadcrumbs = [
+    imagenes = Imagen.query.order_by(Imagen.id.asc()).all()
+    return render_template('galeria.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
         {'nombre': 'Galería', 'url': url_for('galeria')}
-    ]
-    return render_template('galeria.html', breadcrumbs=breadcrumbs)
+    ], imagenes=imagenes)
 
-# Gestión de usuarios
+@app.route('/galeria/subir', methods=['POST'])
+@login_required
+def subir_imagen():
+    archivos = request.files.getlist('fotos')
+    subidas = 0
+    for archivo in archivos:
+        if archivo and allowed_file(archivo.filename):
+            filename = secure_filename(archivo.filename)
+            base, ext = os.path.splitext(filename)
+            contador = 1
+            while os.path.exists(os.path.join(UPLOAD_FOLDER, filename)):
+                filename = f"{base}_{contador}{ext}"
+                contador += 1
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            archivo.save(filepath)
+            db.session.add(Imagen(filename=filename, filepath=f"uploads/{filename}"))
+            subidas += 1
+    if subidas:
+        db.session.commit()
+        flash(f'{subidas} foto(s) subida(s) correctamente', 'success')
+    else:
+        flash('No se pudo subir ninguna imagen', 'error')
+    return redirect(url_for('galeria'))
+
+@app.route('/galeria/eliminar/<int:img_id>', methods=['POST'])
+@login_required
+def eliminar_imagen(img_id):
+    img = Imagen.query.get(img_id)
+    if not img:
+        flash('Imagen no encontrada', 'error')
+        return redirect(url_for('galeria'))
+    filepath = os.path.join(UPLOAD_FOLDER, img.filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    db.session.delete(img)
+    db.session.commit()
+    flash('Imagen eliminada', 'success')
+    return redirect(url_for('galeria'))
+
+# ==========================================
+# GESTIÓN DE USUARIOS (CRUD)
+# ==========================================
+
 @app.route('/usuarios')
 @login_required
 def usuarios():
-    breadcrumbs = [
+    lista = Usuario.query.order_by(Usuario.id.asc()).all()
+    return render_template('usuarios.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
         {'nombre': 'Gestión de Usuarios', 'url': url_for('usuarios')}
-    ]
-    return render_template('usuarios.html', breadcrumbs=breadcrumbs, usuarios=usuarios_db)
+    ], usuarios=lista)
 
-# CRUD - Crear usuario
 @app.route('/usuarios/crear', methods=['POST'])
 @login_required
 def crear_usuario():
@@ -233,29 +260,26 @@ def crear_usuario():
     if not nombre or not correo or not password:
         flash('Todos los campos son obligatorios', 'error')
         return redirect(url_for('usuarios'))
-
     if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$', nombre):
         flash('El nombre solo debe contener letras', 'error')
         return redirect(url_for('usuarios'))
-
     if not re.match(r'^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$', correo):
         flash('Correo inválido', 'error')
         return redirect(url_for('usuarios'))
-
-    if any(u['correo'] == correo for u in usuarios_db):
+    if Usuario.query.filter_by(correo=correo).first():
         flash('Ese correo ya está registrado', 'error')
         return redirect(url_for('usuarios'))
 
-    usuarios_db.append({'nombre': nombre, 'correo': correo, 'password': password})
+    db.session.add(Usuario(nombre=nombre, correo=correo, password=password))
+    db.session.commit()
     flash(f'Usuario {nombre} creado correctamente', 'success')
     return redirect(url_for('usuarios'))
 
-# CRUD - Editar usuario
 @app.route('/usuarios/editar', methods=['POST'])
 @login_required
 def editar_usuario():
     try:
-        idx      = int(request.form.get('idx'))
+        uid      = int(request.form.get('idx'))
         nombre   = request.form.get('nombre', '').strip()
         correo   = request.form.get('correo', '').strip()
         password = request.form.get('password', '').strip()
@@ -263,128 +287,93 @@ def editar_usuario():
         flash('Solicitud inválida', 'error')
         return redirect(url_for('usuarios'))
 
-    if idx < 0 or idx >= len(usuarios_db):
+    u = Usuario.query.get(uid)
+    if not u:
         flash('Usuario no encontrado', 'error')
         return redirect(url_for('usuarios'))
-
     if not nombre or not correo:
         flash('Nombre y correo son obligatorios', 'error')
         return redirect(url_for('usuarios'))
 
-    # Verificar correo duplicado (ignorar el propio)
-    if any(u['correo'] == correo for i, u in enumerate(usuarios_db) if i != idx):
-        flash('Ese correo ya está en uso por otro usuario', 'error')
+    duplicado = Usuario.query.filter_by(correo=correo).first()
+    if duplicado and duplicado.id != uid:
+        flash('Ese correo ya está en uso', 'error')
         return redirect(url_for('usuarios'))
 
-    usuarios_db[idx]['nombre'] = nombre
-    usuarios_db[idx]['correo'] = correo
+    u.nombre = nombre
+    u.correo = correo
     if password:
-        usuarios_db[idx]['password'] = password
-
-    # Actualizar sesión si el usuario editó su propio perfil
-    if session.get('usuario') == usuarios_db[idx]['nombre'] or True:
-        pass  # no forzamos logout, solo actualizamos datos
-
-    flash(f'Usuario actualizado correctamente', 'success')
+        u.password = password
+    db.session.commit()
+    flash('Usuario actualizado correctamente', 'success')
     return redirect(url_for('usuarios'))
 
-# CRUD - Eliminar usuario
-@app.route('/usuarios/eliminar/<int:idx>', methods=['POST'])
+@app.route('/usuarios/eliminar/<int:uid>', methods=['POST'])
 @login_required
-def eliminar_usuario(idx):
-    if idx < 0 or idx >= len(usuarios_db):
+def eliminar_usuario(uid):
+    u = Usuario.query.get(uid)
+    if not u:
         flash('Usuario no encontrado', 'error')
         return redirect(url_for('usuarios'))
-
-    nombre = usuarios_db[idx]['nombre']
-    usuarios_db.pop(idx)
+    nombre = u.nombre
+    db.session.delete(u)
+    db.session.commit()
     flash(f'Usuario {nombre} eliminado', 'success')
     return redirect(url_for('usuarios'))
 
-# Perfil de usuario
+# ==========================================
+# PERFIL Y CONFIGURACIÓN
+# ==========================================
+
 @app.route('/perfil')
 @login_required
 def perfil():
-    breadcrumbs = [
+    u = Usuario.query.get(session.get('usuario_id'))
+    return render_template('perfil.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
         {'nombre': 'Mi Perfil', 'url': url_for('perfil')}
-    ]
-    
-    # Buscar datos del usuario actual
-    usuario = next((u for u in usuarios_db if u['nombre'] == session['usuario']), None)
-    
-    return render_template('perfil.html', breadcrumbs=breadcrumbs, usuario=usuario)
+    ], usuario=u)
 
-# Configuraciones
 @app.route('/configuracion')
 @login_required
 def configuracion():
-    breadcrumbs = [
+    return render_template('configuracion.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
         {'nombre': 'Configuración', 'url': url_for('configuracion')}
-    ]
-    return render_template('configuracion.html', breadcrumbs=breadcrumbs)
+    ])
 
-# Ruta para simular un error
 @app.route('/simular-error')
 def simular_error():
-    # Esto causará una división por cero
     resultado = 1 / 0
     return "Esto nunca se ejecutará"
 
-# Cerrar sesión
-@app.route('/logout')
-def logout():
-    session.pop('usuario', None)
-    flash('Has cerrado sesión correctamente', 'success')
-    return redirect(url_for('index'))
+# ==========================================
+# MANEJO DE ERRORES
+# ==========================================
 
-# Manejador de errores 404
 @app.errorhandler(404)
 def error_404(error):
-    breadcrumbs = [
-        {'nombre': 'Inicio', 'url': url_for('index')},
-        {'nombre': 'Error 404', 'url': '#'}
-    ]
-    return render_template('error.html', 
-                         breadcrumbs=breadcrumbs,
-                         error_code=404,
-                         error_title='Página no encontrada',
-                         error_message='La página que buscas no existe o fue movida.'), 404
+    return render_template('error.html',
+        breadcrumbs=[{'nombre': 'Inicio', 'url': url_for('index')}, {'nombre': 'Error 404', 'url': '#'}],
+        error_code=404, error_title='Página no encontrada',
+        error_message='La página que buscas no existe o fue movida.'), 404
 
-# Manejador de errores 500
 @app.errorhandler(500)
 def error_500(error):
-    breadcrumbs = [
-        {'nombre': 'Inicio', 'url': url_for('index')},
-        {'nombre': 'Error 500', 'url': '#'}
-    ]
     return render_template('error.html',
-                         breadcrumbs=breadcrumbs,
-                         error_code=500,
-                         error_title='Error del servidor',
-                         error_message='Ocurrió un error inesperado en el servidor. Por favor, inténtalo más tarde.'), 500
+        breadcrumbs=[{'nombre': 'Inicio', 'url': url_for('index')}, {'nombre': 'Error 500', 'url': '#'}],
+        error_code=500, error_title='Error del servidor',
+        error_message='Ocurrió un error inesperado. Por favor, inténtalo más tarde.'), 500
 
-# Manejador general de excepciones
 @app.errorhandler(Exception)
 def error_general(error):
-    breadcrumbs = [
-        {'nombre': 'Inicio', 'url': url_for('index')},
-        {'nombre': 'Error', 'url': '#'}
-    ]
     return render_template('error.html',
-                         breadcrumbs=breadcrumbs,
-                         error_code='ERROR',
-                         error_title='Ocurrió un problema',
-                         error_message=f'Se produjo una excepción: {str(error)}'), 500
+        breadcrumbs=[{'nombre': 'Inicio', 'url': url_for('index')}, {'nombre': 'Error', 'url': '#'}],
+        error_code='ERROR', error_title='Ocurrió un problema',
+        error_message=f'Se produjo una excepción: {str(error)}'), 500
 
 if __name__ == '__main__':
-    #app.run(debug=True, host='0.0.0.0', port=5000) 
-    # REMPLAZA ESTO:
-    # app.run(debug=True, host='0.0.0.0', port=5000)
-    
-    # CON ESTO:
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
