@@ -10,17 +10,36 @@
     </div>
 
     <div class="dash-section">
-        <div class="dash-section-header">
-            <h2 class="section-title">Usuarios</h2>
+        <!-- Header con buscador y botón -->
+        <div class="usuarios-toolbar">
+            <form method="GET" action="{{ url_for('usuarios') }}" class="search-form">
+                <div class="search-wrapper">
+                    <span class="search-icon">⌕</span>
+                    <input type="text" name="q" value="{{ busqueda }}"
+                           placeholder="Buscar por nombre..."
+                           class="search-input"
+                           autocomplete="off">
+                    {% if busqueda %}
+                    <a href="{{ url_for('usuarios') }}" class="search-clear">✕</a>
+                    {% endif %}
+                </div>
+            </form>
             <button class="btn btn-primary btn-small" id="btnNuevoUsuario">+ Nuevo usuario</button>
         </div>
 
+        <!-- Info de resultados -->
+        {% if busqueda %}
+        <p class="search-info">
+            {{ paginado.total }} resultado(s) para "<strong>{{ busqueda }}</strong>"
+        </p>
+        {% endif %}
+
+        <!-- Tabla -->
         <div class="crud-table-wrapper">
             {% if usuarios %}
             <table class="crud-table">
                 <thead>
                     <tr>
-                        <th>#</th>
                         <th>Nombre</th>
                         <th>Correo</th>
                         <th>Acciones</th>
@@ -29,12 +48,16 @@
                 <tbody>
                     {% for u in usuarios %}
                     <tr>
-                        <td class="td-index">{{ loop.index }}</td>
                         <td>{{ u.nombre }}</td>
                         <td>{{ u.correo }}</td>
                         <td class="td-actions">
-                            <button class="btn-crud btn-edit" onclick="abrirEditar({{ u.id }}, '{{ u.nombre }}', '{{ u.correo }}')">Editar</button>
-                            <form method="POST" action="{{ url_for('eliminar_usuario', uid=u.id) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
+                            <button class="btn-crud btn-edit"
+                                    onclick="abrirEditar({{ u.id }}, '{{ u.nombre }}', '{{ u.correo }}')">
+                                Editar
+                            </button>
+                            <form method="POST" action="{{ url_for('eliminar_usuario', uid=u.id) }}"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
                                 <button type="submit" class="btn-crud btn-del">Eliminar</button>
                             </form>
                         </td>
@@ -44,10 +67,50 @@
             </table>
             {% else %}
             <div class="crud-empty">
-                <p>No hay usuarios registrados aún.</p>
+                {% if busqueda %}
+                    <p>No se encontraron usuarios con ese nombre.</p>
+                {% else %}
+                    <p>No hay usuarios registrados aún.</p>
+                {% endif %}
             </div>
             {% endif %}
         </div>
+
+        <!-- Paginación -->
+        {% if paginado.pages > 1 %}
+        <div class="pagination">
+            <span class="pagination-info">
+                Página {{ paginado.page }} de {{ paginado.pages }}
+                &nbsp;·&nbsp; {{ paginado.total }} usuarios
+            </span>
+            <div class="pagination-btns">
+                {% if paginado.has_prev %}
+                <a href="{{ url_for('usuarios', page=paginado.prev_num, q=busqueda) }}"
+                   class="page-btn">← Anterior</a>
+                {% else %}
+                <span class="page-btn disabled">← Anterior</span>
+                {% endif %}
+
+                {% for num in paginado.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
+                    {% if num %}
+                        <a href="{{ url_for('usuarios', page=num, q=busqueda) }}"
+                           class="page-btn {% if num == paginado.page %}active{% endif %}">
+                            {{ num }}
+                        </a>
+                    {% else %}
+                        <span class="page-btn dots">…</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if paginado.has_next %}
+                <a href="{{ url_for('usuarios', page=paginado.next_num, q=busqueda) }}"
+                   class="page-btn">Siguiente →</a>
+                {% else %}
+                <span class="page-btn disabled">Siguiente →</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -83,13 +146,13 @@
 
 {% block extra_js %}
 <script>
-const overlay     = document.getElementById('modalOverlay');
-const modalTitle  = document.getElementById('modalTitle');
-const modalForm   = document.getElementById('modalForm');
-const modalIdx    = document.getElementById('modalIdx');
-const modalNombre = document.getElementById('modalNombre');
-const modalCorreo = document.getElementById('modalCorreo');
-const modalPass   = document.getElementById('modalPass');
+const overlay      = document.getElementById('modalOverlay');
+const modalTitle   = document.getElementById('modalTitle');
+const modalForm    = document.getElementById('modalForm');
+const modalIdx     = document.getElementById('modalIdx');
+const modalNombre  = document.getElementById('modalNombre');
+const modalCorreo  = document.getElementById('modalCorreo');
+const modalPass    = document.getElementById('modalPass');
 const modalPassHint = document.getElementById('modalPassHint');
 
 function cerrarModal() { overlay.style.display = 'none'; }
@@ -121,6 +184,20 @@ function abrirEditar(idx, nombre, correo) {
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalCancelBtn').addEventListener('click', cerrarModal);
 overlay.addEventListener('click', function(e) { if (e.target === overlay) cerrarModal(); });
+
+// Búsqueda solo al presionar Enter o al salir del campo
+const searchInput = document.querySelector('.search-input');
+if (searchInput) {
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
+    searchInput.addEventListener('blur', function() {
+        this.closest('form').submit();
+    });
+}
 </script>
 {% endblock %}
 {% endblock %}

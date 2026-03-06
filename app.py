@@ -243,12 +243,21 @@ def eliminar_imagen(img_id):
 @app.route('/usuarios')
 @login_required
 def usuarios():
-    lista = Usuario.query.order_by(Usuario.id.asc()).all()
+    busqueda = request.args.get('q', '').strip()
+    pagina   = request.args.get('page', 1, type=int)
+    por_pagina = 4
+
+    query = Usuario.query.order_by(Usuario.id.asc())
+    if busqueda:
+        query = query.filter(Usuario.nombre.ilike(f'%{busqueda}%'))
+
+    paginado = query.paginate(page=pagina, per_page=por_pagina, error_out=False)
+
     return render_template('usuarios.html', breadcrumbs=[
         {'nombre': 'Inicio', 'url': url_for('index')},
         {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
         {'nombre': 'Gestión de Usuarios', 'url': url_for('usuarios')}
-    ], usuarios=lista)
+    ], usuarios=paginado.items, paginado=paginado, busqueda=busqueda)
 
 @app.route('/usuarios/crear', methods=['POST'])
 @login_required
