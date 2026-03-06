@@ -243,8 +243,18 @@ def eliminar_imagen(img_id):
 @app.route('/usuarios')
 @login_required
 def usuarios():
-    busqueda = request.args.get('q', '').strip()
-    pagina   = request.args.get('page', 1, type=int)
+    return render_template('usuarios.html', breadcrumbs=[
+        {'nombre': 'Inicio', 'url': url_for('index')},
+        {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
+        {'nombre': 'Gestión de Usuarios', 'url': url_for('usuarios')}
+    ])
+
+@app.route('/api/usuarios')
+@login_required
+def api_usuarios():
+    from flask import jsonify
+    busqueda   = request.args.get('q', '').strip()
+    pagina     = request.args.get('page', 1, type=int)
     por_pagina = 4
 
     query = Usuario.query.order_by(Usuario.id.asc())
@@ -253,82 +263,78 @@ def usuarios():
 
     paginado = query.paginate(page=pagina, per_page=por_pagina, error_out=False)
 
-    return render_template('usuarios.html', breadcrumbs=[
-        {'nombre': 'Inicio', 'url': url_for('index')},
-        {'nombre': 'Panel de Control', 'url': url_for('dashboard')},
-        {'nombre': 'Gestión de Usuarios', 'url': url_for('usuarios')}
-    ], usuarios=paginado.items, paginado=paginado, busqueda=busqueda)
+    return jsonify({
+        'usuarios': [{'id': u.id, 'nombre': u.nombre, 'correo': u.correo} for u in paginado.items],
+        'total':    paginado.total,
+        'pages':    paginado.pages,
+        'page':     paginado.page,
+        'has_prev': paginado.has_prev,
+        'has_next': paginado.has_next,
+        'prev_num': paginado.prev_num,
+        'next_num': paginado.next_num,
+    })
 
 @app.route('/usuarios/crear', methods=['POST'])
 @login_required
 def crear_usuario():
+    from flask import jsonify
     nombre   = request.form.get('nombre', '').strip()
     correo   = request.form.get('correo', '').strip()
     password = request.form.get('password', '').strip()
 
     if not nombre or not correo or not password:
-        flash('Todos los campos son obligatorios', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Todos los campos son obligatorios'})
     if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$', nombre):
-        flash('El nombre solo debe contener letras', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'El nombre solo debe contener letras'})
     if not re.match(r'^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$', correo):
-        flash('Correo inválido', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Correo inválido'})
     if Usuario.query.filter_by(correo=correo).first():
-        flash('Ese correo ya está registrado', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Ese correo ya está registrado'})
 
     db.session.add(Usuario(nombre=nombre, correo=correo, password=password))
     db.session.commit()
-    flash(f'Usuario {nombre} creado correctamente', 'success')
-    return redirect(url_for('usuarios'))
+    return jsonify({'ok': True, 'msg': f'Usuario {nombre} creado correctamente'})
 
 @app.route('/usuarios/editar', methods=['POST'])
 @login_required
 def editar_usuario():
+    from flask import jsonify
     try:
         uid      = int(request.form.get('idx'))
         nombre   = request.form.get('nombre', '').strip()
         correo   = request.form.get('correo', '').strip()
         password = request.form.get('password', '').strip()
     except (TypeError, ValueError):
-        flash('Solicitud inválida', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Solicitud inválida'})
 
     u = Usuario.query.get(uid)
     if not u:
-        flash('Usuario no encontrado', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Usuario no encontrado'})
     if not nombre or not correo:
-        flash('Nombre y correo son obligatorios', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Nombre y correo son obligatorios'})
 
     duplicado = Usuario.query.filter_by(correo=correo).first()
     if duplicado and duplicado.id != uid:
-        flash('Ese correo ya está en uso', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Ese correo ya está en uso'})
 
     u.nombre = nombre
     u.correo = correo
     if password:
         u.password = password
     db.session.commit()
-    flash('Usuario actualizado correctamente', 'success')
-    return redirect(url_for('usuarios'))
+    return jsonify({'ok': True, 'msg': 'Usuario actualizado correctamente'})
 
 @app.route('/usuarios/eliminar/<int:uid>', methods=['POST'])
 @login_required
 def eliminar_usuario(uid):
+    from flask import jsonify
     u = Usuario.query.get(uid)
     if not u:
-        flash('Usuario no encontrado', 'error')
-        return redirect(url_for('usuarios'))
+        return jsonify({'ok': False, 'msg': 'Usuario no encontrado'})
     nombre = u.nombre
     db.session.delete(u)
     db.session.commit()
-    flash(f'Usuario {nombre} eliminado', 'success')
-    return redirect(url_for('usuarios'))
+    return jsonify({'ok': True, 'msg': f'Usuario {nombre} eliminado'})
 
 # ==========================================
 # PERFIL Y CONFIGURACIÓN
@@ -386,3 +392,10 @@ def error_general(error):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+@app.route('/api/usuarios/todos')
+@login_required
+def api_usuarios_todos():
+    from flask import jsonify
+    usuarios = Usuario.query.order_by(Usuario.id.asc()).all()
+    return jsonify([{'id': u.id, 'nombre': u.nombre, 'correo': u.correo} for u in usuarios])

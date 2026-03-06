@@ -1698,3 +1698,37 @@ body {
     padding: 6px 8px;
     color: var(--warm-gray2);
 }
+
+/* Toast de usuarios */
+.usuarios-toast {
+    padding: 12px 20px;
+    border-radius: var(--radius-full);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: var(--spacing-md);
+    display: inline-block;
+}
+.toast-ok  { background: rgba(92,122,95,0.12); color: var(--sage); border: 1px solid rgba(92,122,95,0.3); }
+.toast-err { background: rgba(196,97,74,0.10); color: var(--terra); border: 1px solid rgba(196,97,74,0.3); }
+
+/* Loading cell */
+.td-loading {
+    text-align: center;
+    padding: 32px !important;
+    font-family: var(--font-display);
+    font-style: italic;
+    color: var(--warm-gray2);
+    font-size: 15px;
+}
+
+/* Modal error */
+.modal-error {
+    background: rgba(196,97,74,0.08);
+    border: 1px solid rgba(196,97,74,0.3);
+    border-radius: var(--radius-md);
+    color: var(--terra);
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 400;
+}

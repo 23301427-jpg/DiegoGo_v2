@@ -10,33 +10,20 @@
     </div>
 
     <div class="dash-section">
-        <!-- Header con buscador y botón -->
         <div class="usuarios-toolbar">
-            <form method="GET" action="{{ url_for('usuarios') }}" class="search-form">
-                <div class="search-wrapper">
-                    <span class="search-icon">⌕</span>
-                    <input type="text" name="q" value="{{ busqueda }}"
-                           placeholder="Buscar por nombre..."
-                           class="search-input"
-                           autocomplete="off">
-                    {% if busqueda %}
-                    <a href="{{ url_for('usuarios') }}" class="search-clear">✕</a>
-                    {% endif %}
-                </div>
-            </form>
+            <div class="search-wrapper">
+                <span class="search-icon">⌕</span>
+                <input type="text" id="searchInput" placeholder="Buscar por nombre..."
+                       class="search-input" autocomplete="off">
+                <button class="search-clear" id="searchClear" style="display:none;">✕</button>
+            </div>
             <button class="btn btn-primary btn-small" id="btnNuevoUsuario">+ Nuevo usuario</button>
         </div>
 
-        <!-- Info de resultados -->
-        {% if busqueda %}
-        <p class="search-info">
-            {{ paginado.total }} resultado(s) para "<strong>{{ busqueda }}</strong>"
-        </p>
-        {% endif %}
+        <p class="search-info" id="searchInfo" style="display:none;"></p>
+        <div id="toast" class="usuarios-toast" style="display:none;"></div>
 
-        <!-- Tabla -->
         <div class="crud-table-wrapper">
-            {% if usuarios %}
             <table class="crud-table">
                 <thead>
                     <tr>
@@ -45,72 +32,17 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u.nombre }}</td>
-                        <td>{{ u.correo }}</td>
-                        <td class="td-actions">
-                            <button class="btn-crud btn-edit"
-                                    onclick="abrirEditar({{ u.id }}, '{{ u.nombre }}', '{{ u.correo }}')">
-                                Editar
-                            </button>
-                            <form method="POST" action="{{ url_for('eliminar_usuario', uid=u.id) }}"
-                                  style="display:inline;"
-                                  onsubmit="return confirm('¿Eliminar a {{ u.nombre }}?')">
-                                <button type="submit" class="btn-crud btn-del">Eliminar</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                <tbody id="tablaBody"></tbody>
             </table>
-            {% else %}
-            <div class="crud-empty">
-                {% if busqueda %}
-                    <p>No se encontraron usuarios con ese nombre.</p>
-                {% else %}
-                    <p>No hay usuarios registrados aún.</p>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Paginación -->
-        {% if paginado.pages > 1 %}
-        <div class="pagination">
-            <span class="pagination-info">
-                Página {{ paginado.page }} de {{ paginado.pages }}
-                &nbsp;·&nbsp; {{ paginado.total }} usuarios
-            </span>
-            <div class="pagination-btns">
-                {% if paginado.has_prev %}
-                <a href="{{ url_for('usuarios', page=paginado.prev_num, q=busqueda) }}"
-                   class="page-btn">← Anterior</a>
-                {% else %}
-                <span class="page-btn disabled">← Anterior</span>
-                {% endif %}
-
-                {% for num in paginado.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
-                    {% if num %}
-                        <a href="{{ url_for('usuarios', page=num, q=busqueda) }}"
-                           class="page-btn {% if num == paginado.page %}active{% endif %}">
-                            {{ num }}
-                        </a>
-                    {% else %}
-                        <span class="page-btn dots">…</span>
-                    {% endif %}
-                {% endfor %}
-
-                {% if paginado.has_next %}
-                <a href="{{ url_for('usuarios', page=paginado.next_num, q=busqueda) }}"
-                   class="page-btn">Siguiente →</a>
-                {% else %}
-                <span class="page-btn disabled">Siguiente →</span>
-                {% endif %}
+            <div id="emptyState" class="crud-empty" style="display:none;">
+                <p id="emptyMsg">No hay usuarios registrados aún.</p>
             </div>
         </div>
-        {% endif %}
+
+        <div class="pagination" id="paginacion" style="display:none;">
+            <span class="pagination-info" id="paginaInfo"></span>
+            <div class="pagination-btns" id="paginaBtns"></div>
+        </div>
     </div>
 </div>
 
@@ -121,83 +53,291 @@
             <h3 class="modal-title" id="modalTitle">Nuevo Usuario</h3>
             <button class="modal-close" id="modalClose">✕</button>
         </div>
-        <form method="POST" id="modalForm" class="modal-form">
-            <input type="hidden" id="modalIdx" name="idx" value="">
+        <div class="modal-form">
+            <input type="hidden" id="modalIdx" value="">
             <div class="form-group">
                 <label class="form-label">Nombre <span class="required">*</span></label>
-                <input type="text" name="nombre" id="modalNombre" class="form-input" required placeholder="nombre">
+                <input type="text" id="modalNombre" class="form-input" placeholder="nombre">
             </div>
             <div class="form-group">
                 <label class="form-label">Correo <span class="required">*</span></label>
-                <input type="email" name="correo" id="modalCorreo" class="form-input" required placeholder="correo@ejemplo.com">
+                <input type="email" id="modalCorreo" class="form-input" placeholder="correo@ejemplo.com">
             </div>
             <div class="form-group">
                 <label class="form-label">Contraseña <span class="required">*</span></label>
-                <input type="password" name="password" id="modalPass" class="form-input" placeholder="••••••••">
+                <input type="password" id="modalPass" class="form-input" placeholder="••••••••">
                 <small class="form-hint" id="modalPassHint"></small>
             </div>
+            <div id="modalError" class="modal-error" style="display:none;"></div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-small" id="modalCancelBtn">Cancelar</button>
-                <button type="submit" class="btn btn-primary btn-small">Guardar</button>
+                <button type="button" class="btn btn-primary btn-small" id="modalSubmitBtn">Guardar</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 {% block extra_js %}
 <script>
-const overlay      = document.getElementById('modalOverlay');
-const modalTitle   = document.getElementById('modalTitle');
-const modalForm    = document.getElementById('modalForm');
-const modalIdx     = document.getElementById('modalIdx');
-const modalNombre  = document.getElementById('modalNombre');
-const modalCorreo  = document.getElementById('modalCorreo');
-const modalPass    = document.getElementById('modalPass');
-const modalPassHint = document.getElementById('modalPassHint');
+// ==========================================
+// Datos en memoria — se cargan UNA sola vez
+// ==========================================
+const POR_PAGINA = 4;
+let todos    = [];   // todos los usuarios
+let filtrado = [];   // después de buscar
+let pagina   = 1;
 
-function cerrarModal() { overlay.style.display = 'none'; }
+// Carga inicial
+fetch('/api/usuarios/todos')
+    .then(r => r.json())
+    .then(data => {
+        todos    = data;
+        filtrado = data;
+        renderTabla();
+    });
 
-document.getElementById('btnNuevoUsuario').addEventListener('click', function() {
-    modalTitle.textContent = 'Nuevo Usuario';
-    modalForm.action = '{{ url_for("crear_usuario") }}';
-    modalIdx.value = '';
-    modalNombre.value = '';
-    modalCorreo.value = '';
-    modalPass.value = '';
-    modalPass.required = true;
-    modalPassHint.textContent = 'Mínimo 8 caracteres, mayúsculas, minúsculas y números';
-    overlay.style.display = 'flex';
+// ==========================================
+// Búsqueda local (instantánea, sin servidor)
+// ==========================================
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+searchInput.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    searchClear.style.display = q ? 'block' : 'none';
+    filtrado = q ? todos.filter(u => u.nombre.toLowerCase().includes(q)) : todos;
+    pagina = 1;
+    renderTabla();
 });
 
-function abrirEditar(idx, nombre, correo) {
-    modalTitle.textContent = 'Editar Usuario';
-    modalForm.action = '{{ url_for("editar_usuario") }}';
-    modalIdx.value = idx;
-    modalNombre.value = nombre;
-    modalCorreo.value = correo;
-    modalPass.value = '';
-    modalPass.required = false;
-    modalPassHint.textContent = 'Deja en blanco para no cambiar la contraseña';
-    overlay.style.display = 'flex';
+searchClear.addEventListener('click', function() {
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    filtrado = todos;
+    pagina = 1;
+    renderTabla();
+});
+
+// ==========================================
+// Render tabla (solo DOM, sin red)
+// ==========================================
+function renderTabla() {
+    const tbody  = document.getElementById('tablaBody');
+    const empty  = document.getElementById('emptyState');
+    const info   = document.getElementById('searchInfo');
+    const q      = searchInput.value.trim();
+
+    // Info búsqueda
+    if (q) {
+        info.style.display = 'block';
+        info.innerHTML = `${filtrado.length} resultado(s) para "<strong>${escHtml(q)}</strong>"`;
+    } else {
+        info.style.display = 'none';
+    }
+
+    if (!filtrado.length) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        document.getElementById('emptyMsg').textContent = q
+            ? 'No se encontraron usuarios con ese nombre.'
+            : 'No hay usuarios registrados aún.';
+        document.getElementById('paginacion').style.display = 'none';
+        return;
+    }
+
+    empty.style.display = 'none';
+
+    // Slice de la página actual
+    const inicio = (pagina - 1) * POR_PAGINA;
+    const pagina_items = filtrado.slice(inicio, inicio + POR_PAGINA);
+
+    tbody.innerHTML = pagina_items.map(u => `
+        <tr>
+            <td>${escHtml(u.nombre)}</td>
+            <td>${escHtml(u.correo)}</td>
+            <td class="td-actions">
+                <button class="btn-crud btn-edit"
+                        onclick="abrirEditar(${u.id},'${escAttr(u.nombre)}','${escAttr(u.correo)}')">
+                    Editar
+                </button>
+                <button class="btn-crud btn-del"
+                        onclick="confirmarEliminar(${u.id},'${escAttr(u.nombre)}')">
+                    Eliminar
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    renderPaginacion();
 }
 
+function renderPaginacion() {
+    const total  = filtrado.length;
+    const pages  = Math.ceil(total / POR_PAGINA);
+    const pag    = document.getElementById('paginacion');
+
+    if (pages <= 1) { pag.style.display = 'none'; return; }
+
+    pag.style.display = 'flex';
+    document.getElementById('paginaInfo').textContent =
+        `Página ${pagina} de ${pages} · ${total} usuarios`;
+
+    let html = '';
+    html += pagina > 1
+        ? `<button class="page-btn" onclick="irPagina(${pagina-1})">← Anterior</button>`
+        : `<span class="page-btn disabled">← Anterior</span>`;
+
+    for (let i = 1; i <= pages; i++) {
+        html += i === pagina
+            ? `<span class="page-btn active">${i}</span>`
+            : `<button class="page-btn" onclick="irPagina(${i})">${i}</button>`;
+    }
+
+    html += pagina < pages
+        ? `<button class="page-btn" onclick="irPagina(${pagina+1})">Siguiente →</button>`
+        : `<span class="page-btn disabled">Siguiente →</span>`;
+
+    document.getElementById('paginaBtns').innerHTML = html;
+}
+
+function irPagina(n) { pagina = n; renderTabla(); }
+
+// ==========================================
+// Modal
+// ==========================================
+function cerrarModal() {
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.getElementById('modalError').style.display = 'none';
+}
+
+function abrirNuevo() {
+    document.getElementById('modalTitle').textContent = 'Nuevo Usuario';
+    document.getElementById('modalIdx').value = '';
+    document.getElementById('modalNombre').value = '';
+    document.getElementById('modalCorreo').value = '';
+    document.getElementById('modalPass').value = '';
+    document.getElementById('modalPassHint').textContent = 'Mínimo 8 caracteres, mayúsculas, minúsculas y números';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function abrirEditar(id, nombre, correo) {
+    document.getElementById('modalTitle').textContent = 'Editar Usuario';
+    document.getElementById('modalIdx').value = id;
+    document.getElementById('modalNombre').value = nombre;
+    document.getElementById('modalCorreo').value = correo;
+    document.getElementById('modalPass').value = '';
+    document.getElementById('modalPassHint').textContent = 'Deja en blanco para no cambiar la contraseña';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+// ==========================================
+// Guardar (solo 1 llamada al servidor, luego actualiza memoria)
+// ==========================================
+document.getElementById('modalSubmitBtn').addEventListener('click', function() {
+    const idx      = document.getElementById('modalIdx').value;
+    const nombre   = document.getElementById('modalNombre').value.trim();
+    const correo   = document.getElementById('modalCorreo').value.trim();
+    const password = document.getElementById('modalPass').value.trim();
+    const errorEl  = document.getElementById('modalError');
+
+    const url  = idx ? '/usuarios/editar' : '/usuarios/crear';
+    const body = new FormData();
+    if (idx) body.append('idx', idx);
+    body.append('nombre', nombre);
+    body.append('correo', correo);
+    body.append('password', password);
+
+    fetch(url, { method: 'POST', body })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                errorEl.textContent = data.msg;
+                errorEl.style.display = 'block';
+                return;
+            }
+            cerrarModal();
+            mostrarToast(data.msg, true);
+
+            // Actualiza memoria local sin volver a pedir al servidor
+            if (idx) {
+                const i = todos.findIndex(u => u.id === parseInt(idx));
+                if (i !== -1) { todos[i].nombre = nombre; todos[i].correo = correo; }
+            } else {
+                // Para nuevo usuario necesitamos el ID — recargamos solo este caso
+                fetch('/api/usuarios/todos')
+                    .then(r => r.json())
+                    .then(data => {
+                        todos    = data;
+                        filtrado = searchInput.value.trim()
+                            ? data.filter(u => u.nombre.toLowerCase().includes(searchInput.value.trim().toLowerCase()))
+                            : data;
+                        renderTabla();
+                    });
+                return;
+            }
+
+            // Re-aplicar filtro en memoria
+            const q = searchInput.value.trim().toLowerCase();
+            filtrado = q ? todos.filter(u => u.nombre.toLowerCase().includes(q)) : todos;
+            renderTabla();
+        })
+        .catch(() => {
+            errorEl.textContent = 'Error de conexión';
+            errorEl.style.display = 'block';
+        });
+});
+
+// ==========================================
+// Eliminar (actualiza memoria local)
+// ==========================================
+function confirmarEliminar(id, nombre) {
+    if (!confirm(`¿Eliminar a ${nombre}?`)) return;
+
+    fetch(`/usuarios/eliminar/${id}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            mostrarToast(data.msg, data.ok);
+            if (!data.ok) return;
+
+            // Quitar de memoria local — sin llamada extra al servidor
+            todos    = todos.filter(u => u.id !== id);
+            const q  = searchInput.value.trim().toLowerCase();
+            filtrado = q ? todos.filter(u => u.nombre.toLowerCase().includes(q)) : todos;
+
+            // Si la página queda vacía, retroceder una
+            const pages = Math.ceil(filtrado.length / POR_PAGINA);
+            if (pagina > pages && pages > 0) pagina = pages;
+
+            renderTabla();
+        });
+}
+
+// ==========================================
+// Toast
+// ==========================================
+function mostrarToast(msg, ok) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'usuarios-toast ' + (ok ? 'toast-ok' : 'toast-err');
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ==========================================
+// Helpers
+// ==========================================
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) { return String(s).replace(/'/g,"\\'"); }
+
+// Eventos
+document.getElementById('btnNuevoUsuario').addEventListener('click', abrirNuevo);
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalCancelBtn').addEventListener('click', cerrarModal);
-overlay.addEventListener('click', function(e) { if (e.target === overlay) cerrarModal(); });
-
-// Búsqueda solo al presionar Enter o al salir del campo
-const searchInput = document.querySelector('.search-input');
-if (searchInput) {
-    searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            this.closest('form').submit();
-        }
-    });
-    searchInput.addEventListener('blur', function() {
-        this.closest('form').submit();
-    });
-}
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal(); });
 </script>
 {% endblock %}
 {% endblock %}
