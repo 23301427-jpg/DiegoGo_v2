@@ -1732,3 +1732,57 @@ body {
     font-size: 13px;
     font-weight: 400;
 }
+
+/* Errores de campo en modal */
+.field-error {
+    display: block;
+    font-size: 12px;
+    color: var(--terra);
+    margin-top: 4px;
+    font-family: var(--font-display);
+    font-style: italic;
+}
+
+/* Contador de caracteres */
+.char-counter {
+    display: block;
+    font-size: 11px;
+    color: var(--warm-gray2);
+    margin-top: 4px;
+    text-align: right;
+    font-family: var(--font-mono);
+    transition: color var(--transition-fast);
+}
+
+/* Errores de campo mejorados */
+.field-error {
+    display: block;
+    font-size: 12px;
+    color: var(--terra);
+    margin-top: 6px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    padding: 6px 10px;
+    background: rgba(196,97,74,0.07);
+    border-left: 2px solid var(--terra);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Resumen de errores */
+.modal-error {
+    background: rgba(196,97,74,0.08);
+    border: 1px solid rgba(196,97,74,0.3);
+    border-radius: var(--radius-md);
+    color: var(--terra);
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.modal-error ul {
+    margin: 6px 0 0 16px;
+    padding: 0;
+}
+
+.modal-error li { margin-bottom: 2px; }

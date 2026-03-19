@@ -48,12 +48,12 @@
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay" style="display:none;">
-    <div class="modal-box">
-        <div class="modal-header">
+    <div class="modal-box" style="max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header" style="flex-shrink: 0;">
             <h3 class="modal-title" id="modalTitle">Nuevo Usuario</h3>
             <button class="modal-close" id="modalClose">✕</button>
         </div>
-        <div class="modal-form">
+        <div class="modal-form" style="overflow-y: auto; flex: 1;">
             <input type="hidden" id="modalIdx" value="">
             <div class="form-group">
                 <label class="form-label">Nombre <span class="required">*</span></label>
@@ -69,10 +69,10 @@
                 <small class="form-hint" id="modalPassHint"></small>
             </div>
             <div id="modalError" class="modal-error" style="display:none;"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-small" id="modalCancelBtn">Cancelar</button>
-                <button type="button" class="btn btn-primary btn-small" id="modalSubmitBtn">Guardar</button>
-            </div>
+        </div>
+        <div class="modal-footer" style="flex-shrink: 0; border-top: 1px solid var(--warm-gray1, #e8e4de); padding-top: 16px; margin-top: 0;">
+            <button type="button" class="btn btn-secondary btn-small" id="modalCancelBtn">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-small" id="modalSubmitBtn">Guardar</button>
         </div>
     </div>
 </div>
@@ -208,6 +208,13 @@ function irPagina(n) { pagina = n; renderTabla(); }
 function cerrarModal() {
     document.getElementById('modalOverlay').style.display = 'none';
     document.getElementById('modalError').style.display = 'none';
+    // Limpiar errores de campos individuales
+    document.querySelectorAll('.field-error').forEach(e => e.remove());
+    document.querySelectorAll('.form-input.error').forEach(e => e.classList.remove('error'));
+    // Limpiar valores del formulario
+    document.getElementById('modalNombre').value = '';
+    document.getElementById('modalCorreo').value = '';
+    document.getElementById('modalPass').value = '';
 }
 
 function abrirNuevo() {
@@ -241,6 +248,69 @@ document.getElementById('modalSubmitBtn').addEventListener('click', function() {
     const correo   = document.getElementById('modalCorreo').value.trim();
     const password = document.getElementById('modalPass').value.trim();
     const errorEl  = document.getElementById('modalError');
+
+    // Limpiar errores anteriores
+    document.querySelectorAll('.field-error').forEach(e => e.remove());
+    document.querySelectorAll('.form-input.error').forEach(e => e.classList.remove('error'));
+    errorEl.style.display = 'none';
+
+    const errores = [];
+
+    function marcarError(inputId, msg) {
+        const input = document.getElementById(inputId);
+        input.classList.add('error');
+        // Mensaje debajo del campo
+        const span = document.createElement('span');
+        span.className = 'field-error';
+        span.innerHTML = `⚠ ${msg}`;
+        // Insertar después del input (o del wrapper de password)
+        const wrapper = input.closest('.password-wrapper') || input;
+        wrapper.insertAdjacentElement('afterend', span);
+        errores.push(msg);
+    }
+
+    // Validar nombre
+    if (!nombre) {
+        marcarError('modalNombre', 'El nombre es obligatorio');
+    } else if (nombre.length < 2) {
+        marcarError('modalNombre', 'El nombre debe tener al menos 2 caracteres');
+    } else if (nombre.length > 50) {
+        marcarError('modalNombre', `El nombre excede el máximo de 50 caracteres (tienes ${nombre.length})`);
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(nombre)) {
+        marcarError('modalNombre', 'El nombre solo puede contener letras, sin números ni símbolos');
+    }
+
+    // Validar correo
+    if (!correo) {
+        marcarError('modalCorreo', 'El correo es obligatorio');
+    } else if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(correo)) {
+        marcarError('modalCorreo', 'El formato del correo no es válido (ej: usuario@correo.com)');
+    }
+
+    // Validar contraseña
+    if (!idx) {
+        if (!password) {
+            marcarError('modalPass', 'La contraseña es obligatoria');
+        } else if (password.length < 8) {
+            marcarError('modalPass', `La contraseña debe tener al menos 8 caracteres (tienes ${password.length})`);
+        } else if (!/[A-Z]/.test(password)) {
+            marcarError('modalPass', 'La contraseña debe incluir al menos una letra mayúscula');
+        } else if (!/[a-z]/.test(password)) {
+            marcarError('modalPass', 'La contraseña debe incluir al menos una letra minúscula');
+        } else if (!/\d/.test(password)) {
+            marcarError('modalPass', 'La contraseña debe incluir al menos un número');
+        }
+    } else if (password && password.length < 8) {
+        marcarError('modalPass', `La contraseña debe tener al menos 8 caracteres (tienes ${password.length})`);
+    }
+
+    if (errores.length > 0) {
+        errorEl.innerHTML = errores.length === 1
+            ? `<strong>Error:</strong> ${errores[0]}`
+            : `<strong>Hay ${errores.length} errores:</strong><ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>`;
+        errorEl.style.display = 'block';
+        return;
+    }
 
     const url  = idx ? '/usuarios/editar' : '/usuarios/crear';
     const body = new FormData();
@@ -338,6 +408,27 @@ document.getElementById('btnNuevoUsuario').addEventListener('click', abrirNuevo)
 document.getElementById('modalClose').addEventListener('click', cerrarModal);
 document.getElementById('modalCancelBtn').addEventListener('click', cerrarModal);
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal(); });
+
+// Limpiar error de campo al escribir
+['modalNombre','modalCorreo','modalPass'].forEach(id => {
+    document.getElementById(id).addEventListener('input', function() {
+        this.classList.remove('error');
+        const err = this.parentNode.querySelector('.field-error');
+        if (err) err.remove();
+    });
+});
+
+// Contador de caracteres en nombre
+const nombreInput = document.getElementById('modalNombre');
+const counter = document.createElement('span');
+counter.className = 'char-counter';
+counter.textContent = '0 / 50';
+nombreInput.parentNode.appendChild(counter);
+nombreInput.addEventListener('input', function() {
+    const len = this.value.length;
+    counter.textContent = `${len} / 50`;
+    counter.style.color = len > 45 ? 'var(--terra)' : 'var(--warm-gray2)';
+});
 </script>
 {% endblock %}
 {% endblock %}
